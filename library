@@ -1,0 +1,94 @@
+// This script's only job is to create the complete lore database and attach it to the shared state object.
+// It MUST be placed ABOVE the main Input/Output scripts in the scenario's script execution order.
+
+const loreData = {
+    // --- LOCATION ATLAS (WITH ADJACENCY) ---
+    locations: {
+        // Top Level
+        "Arkham": { keys: ["arkham"], parent: null, hub: "Overall-Setting", adjacent: ["Miskatonic-Campus", "Old-Town-Arkham", "The-Fringes"] },
+
+        // Part I: Miskatonic University
+        "Miskatonic-Campus": { keys: ["miskatonic university", "the campus"], parent: "Arkham", hub: "Student, Professor", threat: "Forbidden-Knowledge", adjacent: ["Old-Town-Arkham", "The-Fringes"] },
+        "Phillips-Hall": { keys: ["phillips hall", "administration", "dean's office"], parent: "Miskatonic-Campus", hub: "Professor, Author", inhab: "Yithian-In-Locus(Disguised)", adjacent: ["Miskatonic-Quad", "Orne-Library", "Pabodie-Hall", "Hawthorne-Club"] },
+        "Hawthorne-Club": { keys: ["hawthorne club", "faculty lounge"], parent: "Phillips-Hall", hub: "(Faction)University-Faculty", adjacent: ["Phillips-Hall"] },
+        "Miskatonic-Quad": { keys: ["the quad", "campus green"], parent: "Miskatonic-Campus", hub: "Student", adjacent: ["Phillips-Hall", "Orne-Library", "Pabodie-Hall", "Angell-Student-Union", "Alhazred-Bell-Tower"] },
+        "Orne-Library": { keys: ["orne library", "the library"], parent: "Miskatonic-Campus", hub: "(Faction)Orne-Library-Division", threat: "Byakhee(Summoned)", adjacent: ["Miskatonic-Quad", "Special-Collections-Vault"] },
+        "Special-Collections-Vault": { keys: ["special collections", "the vault"], parent: "Orne-Library", threat: "Necronomicon(Artifact-Horror)", adjacent: ["Orne-Library"] },
+        "Pabodie-Hall": { keys: ["pabodie hall", "science building"], parent: "Miskatonic-Campus", hub: "Astronomer", inhab: "Whisperer-Touched", adjacent: ["Miskatonic-Quad", "Dyer-Geological-Museum", "Whipple-Observatory"] },
+        "Whipple-Observatory": { keys: ["whipple observatory", "the observatory"], parent: "Pabodie-Hall", hub: "(Faction)Celestial-Inquiry", adjacent: ["Pabodie-Hall"] },
+        "Halsey-School-of-Medicine": { keys: ["halsey school", "medical school"], parent: "Miskatonic-Campus", hub: "Heretic-Scientist", inhab: "Artificially-Living", adjacent: ["West-Anatomical-Prep-Room", "Miskatonic-Quad"] },
+        "West-Anatomical-Prep-Room": { keys: ["west's lab", "prep room"], parent: "Halsey-School-of-Medicine", hub: "(Faction)Reanimators-Circle", adjacent: ["Halsey-School-of-Medicine"] },
+        "Pickman-Arts-Endowment": { keys: ["pickman arts", "art building"], parent: "Miskatonic-Campus", hub: "Artist,Changeling", inhab: "Tunnel-Dweller(Disguised)", adjacent: ["Miskatonic-Quad", "Kingsport-Cliffs-District"] },
+        "Dyer-Geological-Museum": { keys: ["dyer museum", "geology museum"], parent: "Miskatonic-Campus", hub: "Explorer", threat: "Shoggoth(Contained),Elder-Thing(Remains)", adjacent: ["Pabodie-Hall", "Expeditionary-Society-Lounge"] },
+        "Expeditionary-Society-Lounge": { keys: ["expeditionary society", "explorer's club"], parent: "Dyer-Geological-Museum", hub: "Explorer", adjacent: ["Dyer-Geological-Museum"] },
+        "Angell-Student-Union": { keys: ["student union", "angell union"], parent: "Miskatonic-Campus", hub: "Uninitiated,Student,Chronicler", adjacent: ["Miskatonic-Quad"] },
+        "Derby-Athletic-Center": { keys: ["derby athletic", "warren field", "the gym"], parent: "Miskatonic-Campus", hub: "(Faction)Varsity-Clubs", adjacent: ["Miskatonic-Quad"] },
+        "Gilman-Mason-Dorms": { keys: ["gilman dorms", "mason dorms"], parent: "Miskatonic-Campus", threat: "Keziah-Mason(Haunting)", adjacent: ["Miskatonic-Quad", "Mason-House"] },
+        "Bowen-Chapel": { keys: ["bowen chapel", "old chapel"], parent: "Miskatonic-Campus", threat: "Summoning-Site", adjacent: ["Orne-Library"] },
+        "Carter-House": { keys: ["carter house", "esoteric studies"], parent: "Miskatonic-Campus", hub: "Dream-Self", adjacent: ["Miskatonic-Quad", "Strange-High-House"] },
+        "Alhazred-Bell-Tower": { keys: ["bell tower", "alhazred tower"], parent: "Miskatonic-Campus", threat: "Undercity-Entrance", adjacent: ["Miskatonic-Quad", "The-Undercity"] },
+        "Legrasse-Security-Station": { keys: ["legrasse station", "campus security"], parent: "Miskatonic-Campus", adjacent: ["Miskatonic-Quad"] },
+        
+        // Part II: City of Arkham
+        "Old-Town-Arkham": { keys: ["old town", "downtown arkham"], parent: "Arkham", hub: "Civilian, Investigator", threat: "Mundane-Crime,Hidden-Cults", adjacent: ["Miskatonic-Campus", "Factory-District", "The-Fringes"] },
+        "Arkham-Police-Precinct": { keys: ["police precinct", "station"], parent: "Old-Town-Arkham", hub: "Investigator", adjacent: ["Central-Market", "Factory-District"] },
+        "Central-Market": { keys: ["central market", "the square"], parent: "Old-Town-Arkham", hub: "Civilian", inhab: "Deep-One-Hybrids(Disguised)", adjacent: ["Arkham-Police-Precinct", "First-Baptist-Church"] },
+        "First-Baptist-Church": { keys: ["first baptist", "white steeple"], parent: "Old-Town-Arkham", hub: "Shepherd", adjacent: ["Central-Market"] },
+        "Arkham-Historical-Society": { keys: ["historical society", "the archive"], parent: "Old-Town-Arkham", hub: "Author", adjacent: ["Central-Market", "Ward-Estate"] },
+        "Howard-Club": { keys: ["howard's club", "dilettante's lounge"], parent: "Old-Town-Arkham", hub: "Spiritualist, Dilettante", adjacent: ["Gilded-Row"] },
+        "Federal-Hill-Church": { keys: ["federal hill church", "starry wisdom"], parent: "Old-Town-Arkham", hub: "(Faction)Starry-Wisdom-Cult", threat: "Haunter-in-the-Dark(Summoned)", adjacent: ["Old-Town-Arkham"] },
+        "Ward-Estate": { keys: ["ward estate", "prospect street"], parent: "Old-Town-Arkham", hub: "Re-Possessed", threat: "Joseph-Curwen(Reanimating)", adjacent: ["Arkham-Historical-Society", "Gilded-Row"] },
+        "Gilded-Row": { keys: ["gilded row", "fraternity row"], parent: "Old-Town-Arkham", hub: "(Faction)Gilded-Row-Societies", adjacent: ["Ward-Estate", "Howard-Club", "Miskatonic-Campus"] },
+        "Mason-House": { keys: ["mason house", "witch house"], parent: "Old-Town-Arkham", hub: "Sorcerer", threat: "Keziah-Mason(Haunting)", adjacent: ["Gilman-Mason-Dorms"] },
+        "Kingsport-Cliffs-District": { keys: ["kingsport cliffs", "bohemian district"], parent: "Old-Town-Arkham", hub: "Artist", adjacent: ["Pickman-Gallery", "Strange-High-House"] },
+        "Pickman-Gallery": { keys: ["pickman's gallery", "ghoul's gallery"], parent: "Kingsport-Cliffs-District", hub: "Artist", threat: "Undercity-Entrance", adjacent: ["The-Undercity", "Pickman-Arts-Endowment"] },
+        "Strange-High-House": { keys: ["strange high house", "cliffside house"], parent: "Kingsport-Cliffs-District", hub: "Dream-Self", adjacent: ["Dreaming-Lodge", "Carter-House"] },
+        "Dreaming-Lodge": { keys: ["dreaming lodge", "secret attic"], parent: "Strange-High-House", hub: "(Faction)Somnambulist-Society", adjacent: ["Strange-High-House", "The-Dreamlands"] },
+
+        // Part III: The Fringes
+        "The-Fringes": { keys: ["the fringes", "outskirts"], parent: "Arkham", threat: "Isolation,Decay", adjacent: ["Old-Town-Arkham", "Innsmouth-Waterfront", "Dunwich-Hills", "Factory-District"] },
+        "Factory-District": { keys: ["factory district", "industrial zone"], parent: "The-Fringes", hub: "Criminal", adjacent: ["Old-Town-Arkham", "O'Bannions-Warehouse", "Martense-Ruins"] },
+        "O'Bannions-Warehouse": { keys: ["o'bannion's warehouse", "mob warehouse"], parent: "Factory-District", hub: "(Faction)O'Bannion-Syndicate", adjacent: ["Factory-District"] },
+        "Martense-Ruins": { keys: ["martense ruins", "collapsed estate"], parent: "Factory-District", hub: "Degenerate", threat: "Undercity-Entrance", adjacent: ["Factory-District", "The-Undercity"] },
+        "Innsmouth-Waterfront": { keys: ["innsmouth", "waterfront"], parent: "The-Fringes", hub: "Innsmouth-Look, Cultist", adjacent: ["Gilman-House-Hotel", "Dagon-Hall"] },
+        "Gilman-House-Hotel": { keys: ["gilman house", "rotting inn"], parent: "Innsmouth-Waterfront", threat: "Trap-for-Outsiders", adjacent: ["Dagon-Hall"] },
+        "Dagon-Hall": { keys: ["dagon hall", "esoteric order"], parent: "Innsmouth-Waterfront", hub: "(Faction)Esoteric-Order-of-Dagon", threat: "Deep-Ones", adjacent: ["Gilman-House-Hotel"] },
+        "Dunwich-Hills": { keys: ["dunwich", "the hills"], parent: "The-Fringes", hub: "Tainted-Blood", adjacent: ["Whateley-Farmstead", "Akeley-Compound"] },
+        "Whateley-Farmstead": { keys: ["whateley farm", "whateley's"], parent: "Dunwich-Hills", hub: "Tainted-Blood", threat: "Dunwich-Horror(Contained)", adjacent: [] },
+        "Akeley-Compound": { keys: ["akeley compound", "mining compound"], parent: "Dunwich-Hills", threat: "Mi-Go", adjacent: [] },
+        "Arkham-Sanitarium": { keys: ["sanitarium", "the madhouse"], parent: "The-Fringes", hub: "Sanity-Damaged, Psychoanalyst", adjacent: [] },
+        "Blasted-Heath": { keys: ["blasted heath", "gardner farm"], parent: "The-Fringes", hub: "Blighted", threat: "Colour-Out-of-Space", adjacent: ["Gardner-Well"] },
+        "Gardner-Well": { keys: ["gardner well", "the well"], parent: "Blasted-Heath", threat: "Colour-Out-of-Space(Lair)", adjacent: ["Blasted-Heath"] },
+        "Shunned-House": { keys: ["shunned house", "benefit street"], parent: "The-Fringes", hub: "Tunnel-Dweller", threat: "Undercity-Entrance", adjacent: ["The-Undercity", "Old-Town-Arkham"] },
+        
+        // Part IV: Inaccessible & Otherworldly
+        "The-Undercity": { keys: ["the undercity", "the tunnels"], parent: "Arkham(Subterranean)", hub: "Tunnel-Dweller", threat: "Ghouls", adjacent: ["Shunned-House", "Alhazred-Bell-Tower", "Martense-Ruins"] },
+        "The-Dreamlands": { keys: ["the dreamlands", "dreamlands"], parent: "Otherworldly", hub: "Dream-Self", threat: "Gugs, Nightgaunts", adjacent: ["Dreaming-Lodge"] },
+        "Yithian-Archives": { keys: ["yithian archives", "pnakotus"], parent: "Otherworldly(Past)", hub: "Yithian-In-Locus", threat: "Flying-Polyps(Imprisoned)" },
+        "Yuggoth": { keys: ["yuggoth", "pluto"], parent: "Otherworldly(Solar-System)", hub: "(Faction)Mi-Go-Collective", threat: "Mi-Go" },
+        "R'lyeh": { keys: ["r'lyeh", "sunken city"], parent: "Otherworldly(Sunken)", threat: "Cthulhu(Slumbering)" },
+        "Nameless-City": { keys: ["nameless city", "arabian desert"], parent: "Otherworldly(Ruins)", threat: "Reptilian-Ghosts" },
+        "Antarctic-Cities": { keys: ["antarctic city", "elder thing city"], parent: "Otherworldly(Ruins)", threat: "Elder-Things, Shoggoths" },
+        "Court-of-Azathoth": { keys: ["court of azathoth", "center of reality"], parent: "Otherworldly(Conceptual)", threat: "Azathoth(Annihilation)" }
+    },
+    
+    // --- FIELD GUIDE: RACES (Complete) ---
+    races: {
+        "Uninitiated": "Trait:Mundane-worldview | Conflict:Worldview-shatters-upon-discovery.",
+        "Blighted": "Trait:Descended-from-cosmic-contamination | Conflict:Fragile-health-and-alienated-mind-due-to-unnatural-biology.",
+        "Degenerate": "Trait:Devolved-human-from-isolated-clan | Conflict:Savage-instincts-vs-navigating-a-complex-modern-world.",
+        "Sanity-Damaged": "Trait:Knows-the-truth-is-real | Conflict:Mind-is-fragile-and-prone-to-further-fractures.",
+        "Innsmouth-Look": "Trait:Human-DeepOne-hybrid | Conflict:Irreversible-physical-transformation-into-a-monster.",
+        "Artificially-Living": "Trait:Reanimated-corpse-via-fringe-science | Conflict:Superhuman-strength-vs-shattered-mind-and-abominable-nature.",
+        "Changeling": "Trait:Distant-fey-ancestry | Conflict:Alien-logic-and-unpredictable-nature-clash-with-human-society.",
+        "Whisperer-Touched": "Trait:Abducted-and-returned-by-Mi-Go | Conflict:Possesses-alien-knowledge-at-the-cost-of-paranoia-and-mental-taint.",
+        "Dream-Self": "Trait:Conscious-traveler-to-another-dimension | Conflict:Physical-body-is-vulnerable-while-mind-is-away.",
+        "Tainted-Blood": "Trait:Innate-magic-aptitude | Conflict:Sorcerous-heritage-corrupts-body-and-mind.",
+        "Re-Possessed": "Trait:Body-hosts-an-ancestral-sorcerer | Conflict:Constant-internal-battle-for-control-of-ones-own-flesh.",
+        "Tunnel-Dweller": "Trait:Native-subterranean-Ghoul | Conflict:Physically-powerful-but-seen-as-a-monster-by-humanity.",
+        "Yithian-In-Locus": "Trait:Alien-archivist-mind-in-human-body | Conflict:Limitless-knowledge-vs-a-fragile-unfamiliar-form."
+    }
+};
+
+// This attaches the completed lore object to the shared state, making it accessible to other scripts.
+state.loreData = loreData;
