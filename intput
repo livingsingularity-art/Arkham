@@ -1,0 +1,177 @@
+/* === AI DUNGEON SCRIPT: ARKHAM FATE ENGINE (DEFINITIVE V16 - SYNTAX FIX) === */
+
+// This script assumes 'loreLibrary.js' exists and is positioned ABOVE this script in the execution order.
+const loreLibrary = typeof state.loreData !== 'undefined' ? state.loreData : undefined;
+
+/* === CONFIGURATION === */
+state.originalAuthorsNote = "[Phase:{{phase}}] [Style:{{style}}] [Directive:{{directive}}] [Genre:{{genre}}] [Theme:{{theme}}] [Context:{{context}}]";
+
+state.authorsNoteLockDuration = 5;
+
+state.initialHeatValue = 0; state.initialTemperatureValue = 1; state.temperatureIncreaseChance = 15; state.heatIncreaseValue = 1; state.temperatureIncreaseValue = 1; state.playerIncreaseHeatImpact = 2; state.playerDecreaseHeatImpact = 2; state.playerIncreaseTemperatureImpact = 1; state.playerDecreaseTemperatureImpact = 1; state.threshholdPlayerIncreaseTemperature = 2; state.threshholdPlayerDecreaseTemperature = 2; state.modelIncreaseHeatImpact = 1; state.modelDecreaseHeatImpact = 2; state.modelIncreaseTemperatureImpact = 1; state.modelDecreaseTemperatureImpact = 1; state.threshholdModelIncreaseTemperature = 3; state.threshholdModelDecreaseTemperature = 3; state.maximumTemperature = 16; state.trueMaximumTemperature = 21; state.minimumTemperature = 1; state.trueMinimumTemperature = 1; state.smartOverheatTimer = "This feature is currently being worked on, do not set it to true."; state.overheatTimer = 4; state.overheatReductionForHeat = 5; state.overheatReductionForTemperature = 1; state.cooldownTimer = 5; state.cooldownRate = 2; state.randomExplosionChance = 3; state.randomExplosionHeatIncreaseValue = 5; state.randomExplosionTemperatureIncreaseValue = 2;
+
+/* === SCRIPT CORE & ANALYTICAL ENGINES === */
+const dreadWords = ["fear", "horror", "terror", "dread", "madness", "insanity", "nightmare", "shadow", "darkness", "abyss", "void", "whisper", "scream", "shriek", "gibber", "crawl", "slither", "squamous", "rugose", "eldritch", "cyclopean", "unholy", "blasphemous", "profane", "tainted", "corrupt", "stench", "ichor", "viscous", "cthulhu", "azathoth", "nyarlathotep", "yog-sothoth", "shoggoth", "mi-go", "non-euclidean", "angled", "wrong", "unnamable", "unspeakable", "indescribable", "ritual", "summon", "sacrifice", "cult", "idol", "tome", "grimoire", "neronomicon", "insmouth", "dunwich", "arkham", "decay", "degenerate", "stench", "foul", "ancient", "aeon", "cosmic", "star", "abomination", "monster", "creature", "thing", "entity", "god", "blood", "guts", "gore", "death", "die", "kill", "pain", "agony", "torment", "curse", "doom", "apocalypse"];
+const rationalityWords = ["logic", "reason", "science", "analyze", "examine", "study", "research", "document", "record", "measure", "calculate", "rationalize", "explain", "mundane", "normal", "ordinary", "sane", "stable", "calm", "order", "law", "system", "method", "proof", "evidence", "fact", "reality", "truth", "clarify", "illuminate", "understand", "comprehend", "secure", "contain", "protect", "ward", "banish", "seal", "lock", "barricade", "reinforce", "hope", "faith", "prayer", "humanity", "civilization", "society", "progress", "future", "help", "assist", "aid", "comfort", "console", "reassure"];
+const genres = { "Noir-Detective": ["clue", "interrogate", "shadow", "rain", "informant", "case", "file", "precinct", "inspector", "motive", "crime", "deception"], "Academic-Gothic": ["library", "tome", "manuscript", "scholar", "ivy", "dust", "forbidden", "university", "professor", "archives", "relic"], "Conspiracy-Thriller": ["secret", "hidden", "redacted", "faction", "order", "they", "watching", "cabal", "plot", "uncover", "secrecy"], "Psychological-Horror": ["madness", "insane", "dread", "forget", "reality", "nightmare", "unreal", "losing", "mind", "sanity", "dream"], "Body-Horror": ["flesh", "transform", "mutate", "viscous", "ichor", "unholy", "birth", "appendage", "hybrid", "inside-out"], "Pulp-Adventure": ["explore", "discover", "jungle", "temple", "ruin", "expedition", "danger", "escape", "chase", "artifact"] };
+const themes = { "Forbidden-Knowledge": ["learn", "read", "know", "secret", "cypher", "translate", "tome", "manuscript", "lore", "peril", "curiosity"], "Tainted-Lineage": ["bloodline", "ancestor", "family", "curse", "heritage", "born", "descendant", "heir", "degeneration"], "Cosmicism-Insignificance": ["insignificant", "dust", "vast", "uncaring", "meaningless", "void", "empty", "silent", "stars", "cosmic"], "Science-vs-Supernatural": ["science", "logic", "reason", "explain", "rationalize", "reagent", "physics", "ritual", "magic", "summon"], "The-Past-is-a-Predator": ["history", "past", "memory", "ghost", "haunting", "echo", "return", "legacy", "ancient"] };
+const styles = { "Atmospheric-Dread": ["quiet", "silence", "shadow", "creeping", "unease", "wrong", "unseen", "looming", "oppressive", "cold"], "Suspenseful-Thriller": ["danger", "cornered", "trap", "chase", "escape", "sudden", "imminent", "heartbeat", "breathless", "urgent"], "Unreliable-Narration": ["dream", "unreal", "forget", "memory", "confused", "vision", "hallucination", "was-it-real"] };
+const bonepoke = { lift: ["uncover", "learn", "read", "translate", "decipher", "research", "study", "connect", "realize", "understand", "examine", "analyze", "investigate", "pursue", "confront", "survive", "resist", "endure", "overcome", "earn"], drop: ["memory", "dream", "past", "history", "ancestor", "bloodline", "legacy", "curse", "grief", "loss", "madness", "nightmare", "hallucination", "whisper", "echo", "return", "spiral", "dread", "despair", "fall"], shear: ["impossible", "wrong", "non-euclidean", "angled", "geometry", "reality", "unreal", "twist", "warp", "distort", "glimpse", "shadow", "other", "beyond", "threshold", "rupture", "break", "shatter", "collapse", "unravel"], invert: ["secret", "lie", "hidden", "mask", "facade", "truth", "reveal", "betray", "opposite", "reflection", "mirror", "double", "paradox", "contradiction", "irony", "reverse", "undo", "unmask", "usurp", "replace"] };
+
+function scoreText(text, words) { const lowerText = text.toLowerCase(); let score = 0; words.forEach(word => { if (lowerText.includes(word)) score++; }); return score; }
+function getRankedTones(text, dictionary) {
+    let scores = Object.keys(dictionary).map(key => ({ name: key, score: scoreText(text, dictionary[key]) })).filter(item => item.score > 0);
+    scores.sort((a, b) => b.score - a.score);
+    if (scores.length === 0) return "None";
+    let rankedString = `${scores[0].name}(P)`;
+    if (scores.length > 1 && scores[1].score > 0) rankedString += `,${scores[1].name}(S)`;
+    return rankedString;
+}
+function randomint(min, max) { return Math.floor(Math.random() * (Math.floor(max) - Math.ceil(min) + 1)) + Math.ceil(min); }
+
+const modifier = (text) => {
+  const isPlayerTurn = typeof info !== 'undefined' && info.actionType === 'input';
+  if (state.heat === undefined) { state.heat = state.initialHeatValue; state.cooldownMode = false; state.overheatMode = false; state.currentLocation = "Old-Town-Arkham"; state.authorsNoteLockCounter = 0; state.lockedAuthorsNote = ""; log("System state initialized."); }
+  if (state.storyTemperature === undefined) { state.storyTemperature = state.initialTemperatureValue; }
+
+  if (state.authorsNoteLockCounter > 0 && isPlayerTurn) {
+    state.memory.authorsNote = state.lockedAuthorsNote;
+    state.authorsNoteLockCounter--;
+    log(`AN LOCK ACTIVE. Turns remaining: ${state.authorsNoteLockCounter}. Re-applying AN: ${state.memory.authorsNote}`);
+    return { text };
+  }
+  
+  if (text.trim().startsWith('/')) {
+    const commandArgs = text.trim().substring(1).split(' '); const command = commandArgs[0].toLowerCase(); const value = parseInt(commandArgs[1]); let feedback = "";
+    switch (command) {
+        case 'tempup': const raiseAmount = !isNaN(value) ? value : 1; state.storyTemperature += raiseAmount; feedback = `Temp raised by ${raiseAmount}.`; break;
+        case 'tempdown': const lowerAmount = !isNaN(value) ? value : 1; state.storyTemperature -= lowerAmount; feedback = `Temp lowered by ${lowerAmount}.`; break;
+        case 'tempmax': state.storyTemperature = state.maximumTemperature; feedback = `Temp set to max (${state.maximumTemperature}).`; break;
+        case 'tempmin': state.storyTemperature = state.minimumTemperature; feedback = `Temp set to min (${state.minimumTemperature}).`; break;
+        default: return { text: `[System: Unknown command '/${command}'.]` };
+    }
+    state.storyTemperature = Math.max(state.trueMinimumTemperature, Math.min(state.storyTemperature, state.trueMaximumTemperature));
+    const feedbackMessage = `[System: ${feedback} New Temperature is ${state.storyTemperature}]`; log(feedbackMessage); return { text: feedbackMessage };
+  }
+
+  if (loreLibrary && loreLibrary.locations) { const lowerCurrentText = text.toLowerCase(); for (const locKey in loreLibrary.locations) { if (loreLibrary.locations[locKey].keys.some(key => lowerCurrentText.includes(key))) { if (state.currentLocation !== locKey) { state.currentLocation = locKey; log(`Location updated to: ${locKey}`); } break; } } }
+
+  let conflictCount = scoreText(text, dreadWords); let calmingCount = scoreText(text, rationalityWords);
+  if (!state.cooldownMode) {
+    const heatImpact = isPlayerTurn ? state.playerIncreaseHeatImpact : state.modelIncreaseHeatImpact; const tempImpact = isPlayerTurn ? state.playerIncreaseTemperatureImpact : state.modelIncreaseTemperatureImpact;
+    const heatDecrease = isPlayerTurn ? state.playerDecreaseHeatImpact : state.modelDecreaseHeatImpact; const tempDecrease = isPlayerTurn ? state.playerDecreaseTemperatureImpact : state.modelDecreaseTemperatureImpact;
+    const tempThresh = isPlayerTurn ? state.threshholdPlayerIncreaseTemperature : state.threshholdModelIncreaseTemperature; const calmThresh = isPlayerTurn ? state.threshholdPlayerDecreaseTemperature : state.threshholdModelDecreaseTemperature;
+    if (conflictCount > 0) { state.heat += conflictCount * heatImpact; if (conflictCount >= tempThresh) state.storyTemperature += tempImpact; }
+    if (calmingCount > 0) { state.heat -= calmingCount * heatDecrease; if (calmingCount >= calmThresh) state.storyTemperature -= tempDecrease; }
+  }
+  
+  const bonepokeResult = getRankedTones(text, bonepoke);
+  if (randomint(1, 100) <= state.randomExplosionChance) {
+    if (bonepokeResult.includes("shear")) { state.heat += 8; state.storyTemperature += 3; log("!BONEPOKE EVENT! Reality Fracture Occurred!"); }
+    else if (bonepokeResult.includes("drop")) { state.heat += 5; state.storyTemperature += 2; log("!BONEPOKE EVENT! Traumatic Flashback Occurred!"); }
+    else { state.heat += state.randomExplosionHeatIncreaseValue; state.storyTemperature += state.randomExplosionTemperatureIncreaseValue; log("!EVENT! Random narrative spike occurred."); }
+  }
+  if(!state.cooldownMode && !state.overheatMode) state.heat += state.heatIncreaseValue;
+  if (randomint(1, state.temperatureIncreaseChance) <= state.heat) { state.heat = 0; state.storyTemperature += state.temperatureIncreaseValue; }
+  if (state.storyTemperature >= state.maximumTemperature && !state.cooldownMode && !state.overheatMode) { state.overheatMode = true; state.overheatTurnsLeft = state.overheatTimer; }
+  if (state.cooldownMode) { state.cooldownTurnsLeft--; state.storyTemperature -= state.cooldownRate; if(state.cooldownTurnsLeft <= 0) state.cooldownMode = false;
+  } else if (state.overheatMode) { state.overheatTurnsLeft--; if (state.overheatTurnsLeft <= 0) { state.storyTemperature -= state.overheatReductionForTemperature; state.heat -= state.overheatReductionForHeat; state.overheatMode = false; state.cooldownMode = true; state.cooldownTurnsLeft = state.cooldownTimer; } }
+  
+  if (bonepokeResult.includes("lift")) { state.temperatureIncreaseChance = Math.min(state.temperatureIncreaseChance + 2, 25); } else { state.temperatureIncreaseChance = 15; }
+  if (bonepokeResult.includes("drop") && state.overheatMode) { state.overheatTurnsLeft++; log("!BONEPOKE GOVERNOR! Emotional climax extended."); }
+
+  state.storyTemperature = Math.max(state.trueMinimumTemperature, Math.min(state.storyTemperature, state.trueMaximumTemperature));
+
+  let phase = ""; let genre = ""; let theme = ""; let style = ""; let directive = "";
+  
+  if (state.storyTemperature <= 2 && isPlayerTurn) {
+    phase = "Introduction. Establish the scene with a sense of quiet, creeping dread. Introduce characters, locations, but keep conflict entirely absent unless the protagonist initiates it.";
+    genre = "Noir-Detective(P),Academic-Gothic(S)"; theme = "Forbidden-Knowledge(P)"; style = "Atmospheric-Dread(P)"; directive = "Focus on establishing the scene and character motivations.";
+  } else {
+    genre = getRankedTones(text, genres); if (genre === "None") genre = "Noir-Detective(P)";
+    theme = getRankedTones(text, themes); if (theme === "None") theme = "Forbidden-Knowledge(P)";
+    style = getRankedTones(text, styles); if (style === "None") style = "Atmospheric-Dread(P)";
+    
+    const directiveDescriptions = { shear: "a rupture in reality (impossible geometry, sensory wrongness)", drop: "internal dread (a recursive memory, psychological horror)", invert: "a contradiction (a betrayal, a revealed lie, an inverted truth)", lift: "the cost of knowledge (the physical or mental price of discovery)" };
+    if (bonepokeResult === "None") { directive = "Focus on establishing the scene and character motivations."; } 
+    else {
+        let primary = bonepokeResult.match(/(\w+)\(P\)/); let secondary = bonepokeResult.match(/(\w+)\(S\)/);
+        let p_text = primary ? directiveDescriptions[primary[1]] : ""; let s_text = secondary ? directiveDescriptions[secondary[1]] : "";
+        if (p_text && s_text) { directive = `Focus primarily on ${p_text}, with a secondary emphasis on ${s_text}.`; }
+        else if (p_text) { directive = `The primary focus should be ${p_text}.`; }
+    }
+  
+    if (state.cooldownMode == false) {
+      if (state.storyTemperature == 1) { phase = "Introduction. Introduce characters and locations. There should be no conflict or tension in the story."; }
+      else if (state.storyTemperature == 2) { phase = "Introduction. Introduce characters, locations, and plot hooks. There should be only a little conflict and tension in the story unless the player is seeking it out."; }
+      else if (state.storyTemperature == 3) { phase = "Introduction. Introduce characters, locations, and plot hooks. There should be only minor conflicts. Introduce the possibility of a moderate conflict that could appear far in the future."; }
+      else if (state.storyTemperature == 4) { phase = "Introduction. Introduce characters, locations, and plot hooks. There should be only minor conflicts. Introduce the possibility of a moderate conflict that could appear far in the future."; }
+      else if (state.storyTemperature == 5) { phase = "Rising Action. Introduce more minor conflicts. Give minor hints as to what a greater conflict in the far future could be."; }
+      else if (state.storyTemperature == 6) { phase = "Rising Action. Introduce the occasional moderate conflict. Give minor hints as to what a greater conflict in the far future could be."; }
+      else if (state.storyTemperature == 7) { phase = "Rising Action. Introduce the occasional moderate conflict. Give minor hints as to what a greater conflict in the far future could be. Introduce conntections to discovered plot hooks."; }
+      else if (state.storyTemperature == 8) { phase = "Rising Action. Introduce the occasional moderate conflict. Give moderate hints as to what a greater conflict in the far future could be. Introduce conntections to discovered plot hooks."; }
+      else if (state.storyTemperature == 9) { phase = "Rising Action. Introduce the occasional moderate conflict. Give moderate hints as to what a greater conflict in the far future could be. Introduce conntections to discovered plot hooks. Begin moving the story towards the greater conflict ahead."; }
+      else if (state.storyTemperature == 10) { phase = "Climax. Introduce the climax of the story. All previous hints about this greater conflict should intersect with this climactic moment. Plot hooks should be connected to this climax. Emphisise major conflict."; }
+      else if (state.storyTemperature == 11) { phase = "Climax. Plot hooks should be connected to this climax. Emphisise major conflict. Push the characters near their limits while staying fair."; }
+      else if (state.storyTemperature == 12) { phase = "Climax. Advance the climax of the story, introduce a challenge to go with it. Emphisise major conflict. Push the characters near their limits while staying fair."; }
+      else if (state.storyTemperature == 13) { phase = "Climax. Advance the climax of the story, introduce challenges to go with it. Emphisise major conflict. Push the characters to their limits. Punish terrible decisions with an appropreate story response."; }
+      else if (state.storyTemperature == 14) { phase = "Climax. Advance the climax of the story. Emphisise major conflict. Push the characters to their limits. Punish bad decisions while not being unfair."; }
+      else if (state.storyTemperature == 15) { phase = "Climax. Advance the climax of the story. Emphisise major conflict. Push the characters to their limits. Punish bad decisions that the characters make. Be unfair at times, but make unfairness in the story make sense with the current plot."; }
+      else if (state.storyTemperature == 16) { phase = "Ultimate Climax. Emphisise increadibly difficult conflict. Push the characters to their limits. Punish bad decisions that the characters make. Be unfair at times."; }
+      else if (state.storyTemperature == 17) { phase = "Ultimate Climax. Emphisise insanely difficult conflict. Push the characters to their absolute limits. Punish bad decisions that the characters make. Make the challenges unfair for characters."; }
+      else if (state.storyTemperature == 18) { phase = "Ultimate Climax. Emphisise insanely difficult conflict. Push the characters to their absolute limits. Heavily punish bad decisions that the characters make. Make the challenges increadibly unfair."; }
+      else if (state.storyTemperature == 19) { phase = "Ultimate Climax. Emphisise impossibly difficult conflict. Push the characters to their absolute limits. Very heavily punish bad decisions that the characters make. Make the challenges increadibly unfair."; }
+      else if (state.storyTemperature == 20) { phase = "Omega Insane Ultimate Climax of Doom. Emphisise insanely difficult conflict. Push the characters to their absolute limits. Very heavily punish bad decisions that the characters make. Make the challenges increadibly unfair. There is no success."; }
+      else if (state.storyTemperature > 20) { phase = "Apocalypse. Emphisise impossible conflict. There is no success. Make challenges blatently unfair. Punish every decision. Actively attempt to push the characters away from their goal in any way possible."; }
+    } else {
+      if (state.storyTemperature <= 1) { state.cooldownMode = false; }
+      else if (state.storyTemperature == 2) { phase = "Downtime. There should be only small bits of tension, with most of the current story being filled with peace and quiet."; }
+      else if (state.storyTemperature == 3) { phase = "Downtime. There should be only minor tension, with most of the current story being filled with peace and quiet."; }
+      else if (state.storyTemperature == 4) { phase = "Downtime. There should be only minor tension, with most of the current story being filled with peaceful encounters."; }
+      else if (state.storyTemperature == 5) { phase = "Downtime. There should be only minor tension, with most of the current story being filled with peaceful encounters, unless characters actively try to cause chaos."; }
+      else if (state.storyTemperature == 6) { phase = "Downtime. There should be only minor tension and conflict, with most of the current story being filled with peaceful encounters, unless characters actively try to cause chaos."; }
+      else if (state.storyTemperature == 7) { phase = "Downtime. There should be only minor tension and conflict, with most of the current story being filled with neutral encounters, unless characters actively try to cause chaos."; }
+      else if (state.storyTemperature == 8) { phase = "Downtime. There should be only minor tension and conflict, with most of the current story containing neutral encounters and minor surprises. This section of story should have a satisfying conclusion for its characters."; }
+      else if (state.storyTemperature == 9) { phase = "Falling Action. The conflicts should be quickly ending, and this section of story should have a satisfying conclusion for its characters. There is still some minor tension and conflict."; }
+      else if (state.storyTemperature == 10) { phase = "Falling Action. The conflicts should be slowly ending, and this section of story should have a satisfying conclusion for its characters. There is still some moderate tension and conflict."; }
+      else if (state.storyTemperature == 11) { phase = "Falling Action. The conflicts should be slowly ending, and this section of story should have a satisfying conclusion for its characters. There is still moderate tension and conflict, but not as much as before."; }
+      else if (state.storyTemperature == 12) { phase = "Falling Action. The conflicts should be slowly ending, and this section of story should have a satisfying conclusion for its characters. There is still moderatly high tension and conflict, but not as much as before."; }
+      else if (state.storyTemperature == 13) { phase = "Falling Action. The conflicts should be slowly ending. There is still moderatly high tension and conflict, but not as much as before."; }
+      else if (state.storyTemperature == 14) { phase = "Falling Action. The conflicts should be beginning to come to a close. There is still moderatly high tension and conflict, but not as much as before."; }
+      else if (state.storyTemperature == 15) { phase = "Falling Action. The conflicts should be beginning to come to a close. Tension and conflict is still high."; }
+      else if (state.storyTemperature == 16) { phase = "Extreme Falling Action. The conflicts should start to show signs of ending. Tension and conflict is still high."; }
+      else if (state.storyTemperature == 17) { phase = "Extreme Falling Action. The conflicts should start to show signs of slightly ending. Tension and conflict is still high."; }
+      else if (state.storyTemperature == 18) { phase = "Extreme Falling Action. The conflicts should start to show signs of slightly ending. Tension and conflict is still very high."; }
+      else if (state.storyTemperature == 19) { phase = "Extreme Falling Action. Tension and conflict is still very high."; }
+      else if (state.storyTemperature >= 20) { phase = "Omega Extreme Falling Action. Tension and conflict is still extremely high."; }
+    }
+  }
+
+  // --- Contextual Lore Injection ---
+  let context = "No-Data";
+  if (loreLibrary && loreLibrary.locations && loreLibrary.locations[state.currentLocation]) {
+      const currentLocationData = loreLibrary.locations[state.currentLocation];
+      let brief = `Loc:${state.currentLocation}(${currentLocationData.parent}). Hub:${currentLocationData.hub}.`;
+      if (currentLocationData.threat) { brief += ` Threat:${currentLocationData.threat}.`; }
+      if (currentLocationData.adjacent && currentLocationData.adjacent.length > 0) {
+          brief += ` Nearby:${currentLocationData.adjacent.join(',')}.`;
+      }
+      context = brief;
+  }
+
+  // --- Final AN Assembly ---
+  let tempNote = state.originalAuthorsNote;
+  tempNote = tempNote.replace("{{phase}}", phase).replace("{{directive}}", directive).replace("{{genre}}", genre).replace("{{style}}", style).replace("{{theme}}", theme).replace("{{context}}", context);
+  state.memory.authorsNote = tempNote;
+  
+  if (isPlayerTurn) {
+    state.lockedAuthorsNote = state.memory.authorsNote;
+    state.authorsNoteLockCounter = state.authorsNoteLockDuration;
+  }
+
+  log(`Heat:${state.heat.toFixed(0)} Temp:${state.storyTemperature.toFixed(0)} AN:${state.memory.authorsNote}`);
+  
+  return { text };
+}
+
+modifier(text);
