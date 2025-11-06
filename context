@@ -1,54 +1,130 @@
-
-// Checkout the Guidebook examples to get an idea of other ways you can use scripting
+// ============================================================================
+// AI DUNGEON SCRIPTING REFERENCE - BEST PRACTICES EDITION
+//
+// This template demonstrates the AI Dungeon scripting API with production-
+// ready best practices based on extensive testing and validation.
+//
+// Official Documentation:
 // https://help.aidungeon.com/scripting
+// https://github.com/magicoflolis/aidungeon.js/blob/main/Scripting%20Guidebook.md
+//
+// Key Best Practices:
+// 1. Always use defensive null checks for state and memory access
+// 2. Avoid ES6 template literals - use string concatenation instead
+// 3. Validate all configuration values with min/max clamping
+// 4. Use state object for persistent data between turns
+// 5. Check typeof before accessing potentially undefined objects
+// ============================================================================
 
 // Every script needs a modifier function
 const modifier = (text) => {
-  // What can you do with a script?
+  // ========================================
+  // LOGGING AND DEBUG OUTPUT
+  // ========================================
 
-  // You can use log or console.log 
+  // You can use log or console.log for debug output
   // log('Hello World')
   // console.log('Hello World')
-  
+
+  // BEST PRACTICE: Avoid template literals for AI Dungeon compatibility
+  // log('Value: ' + state.value)  // ✓ Compatible
+  // log(`Value: ${state.value}`)  // ✗ May not work
+
+  // ========================================
+  // READING CURRENT TEXT
+  // ========================================
+
   // You can read the current text
   // This is the text that would otherwise be sent to the AI model
   // log(text)
-  
+
+  // ========================================
+  // READING HISTORY
+  // ========================================
+
   // You can read the current history
   // log(history)
-  
-  // You can use state to store information between turns
+
+  // ========================================
+  // STATE MANAGEMENT (PERSISTENT DATA)
+  // ========================================
+
+  // Use state to store information between turns
+  // State persists across all turns in the adventure
   // log(state)
   // state.example = 'Hello World!'
-  
-  // You can update the memory
+
+  // BEST PRACTICE: Initialize state values with null checks
+  // if (typeof state.myValue === 'undefined' || state.myValue === null) {
+  //   state.myValue = 100
+  // }
+
+  // ========================================
+  // MEMORY MANAGEMENT
+  // ========================================
+
+  // BEST PRACTICE: Always check if state.memory exists before accessing
+  // Unsafe (may crash):
   // state.memory.context = 'Hello Memory!'
 
-  // You can update the authors note
-  // state.memory.authorsNote = 'Hello Authors Note!'
+  // Safe approach:
+  // if (state.memory) {
+  //   state.memory.context = 'Hello Memory!'
+  // }
+
+  // You can update the authors note (CRITICAL: check for null!)
+  // if (state.memory) {
+  //   state.memory.authorsNote = 'Hello Authors Note!'
+  // }
+
+  // ========================================
+  // PLAYER MESSAGES
+  // ========================================
 
   // You can display messages to the player
   // state.message = 'Hello Player!'
-  
+
+  // ========================================
+  // STORY CARDS
+  // ========================================
+
   // You can read the current story cards
   // log(storyCards)
-  
+
   // You can add a story card
   // addStoryCard('exampleKey', 'exampleEntry', 'exampleType', 'exampleName', 'exampleNotes', { returnCard: false })
-  
+
   // You can remove a story card
   // removeStoryCard(0)
-  
+
   // You can update a story card
   // updateStoryCard(0, 'exampleKey', 'exampleEntry', 'exampleType', 'exampleName', 'exampleNotes')
-  
-  // You can read additional information from the current info.
-  // info.actionCount is the number of actions in the adventure so far.
-  // info.characterNames is an array of the character names for multiplayer adventures.
-  // info.memoryLength (deprecated) is the length of the memory section of text.
-  // info.contextTokens is the number of context tokens available.
-  // info.maxChars is the maximum length that text can be. The server will truncate the text you return to this length.
-  // log(info)  
+
+  // ========================================
+  // INFO OBJECT (TURN METADATA)
+  // ========================================
+
+  // BEST PRACTICE: Check if info exists before accessing
+  // The info object only exists on certain turns
+
+  // Safe way to check if this is a player turn:
+  // const isPlayerTurn = (typeof info !== 'undefined' && info !== null && info.actionType === 'input')
+
+  // Available info properties:
+  // info.actionCount - number of actions in the adventure so far
+  // info.characterNames - array of character names for multiplayer
+  // info.memoryLength - (deprecated) length of memory section
+  // info.contextTokens - number of context tokens available
+  // info.maxChars - maximum length that text can be
+
+  // Safe logging:
+  // if (typeof info !== 'undefined' && info !== null) {
+  //   log('Action count: ' + info.actionCount)
+  // }
+
+  // ========================================
+  // MODIFYING OUTPUT
+  // ========================================
 
   // You can change the player's context text
   // const newText = 'I see you...'
@@ -57,9 +133,65 @@ const modifier = (text) => {
   // You can stop the action from proceeding
   // return { stop: true }
 
+  // ========================================
+  // RETURN VALUE (ALWAYS REQUIRED)
+  // ========================================
+
   // You can let the action proceed as normal
-  return { text }
+  // IMPORTANT: Always return an object with a text property
+  return { text: text }
 }
 
-// Don't modify this part
+// ============================================================================
+// ADDITIONAL BEST PRACTICES FROM ARKHAM FATE ENGINE v2.2
+// ============================================================================
+
+// 1. VALUE VALIDATION AND CLAMPING
+// Always validate and clamp numeric configuration values:
+//
+// function clamp(value, min, max) {
+//   const num = Number(value)
+//   if (isNaN(num)) return min
+//   return Math.max(min, Math.min(num, max))
+// }
+//
+// state.myValue = clamp(state.myValue, 0, 100)
+
+// 2. BOOLEAN COERCION
+// Handle multiple boolean input formats:
+//
+// function bool(value) {
+//   return value === true || value === 'true' || value === 1
+// }
+//
+// state.enableFeature = bool(state.enableFeature)
+
+// 3. SAFE ARRAY ACCESS
+// Check array exists and has length before iteration:
+//
+// if (myArray && myArray.length > 0) {
+//   myArray.forEach(item => {
+//     // Process item
+//   })
+// }
+
+// 4. SAFE OBJECT ACCESS
+// Use hasOwnProperty when iterating objects:
+//
+// for (const key in myObject) {
+//   if (myObject.hasOwnProperty(key)) {
+//     // Process key/value
+//   }
+// }
+
+// 5. DEFENSIVE FUNCTION CALLS
+// Check function exists before calling:
+//
+// if (typeof myFunction !== 'undefined' && myFunction !== null) {
+//   myFunction()
+// }
+
+// ============================================================================
+// Don't modify this part - executes the modifier function
+// ============================================================================
 modifier(text)
