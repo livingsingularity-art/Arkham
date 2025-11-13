@@ -100,6 +100,25 @@ const modifier = (text) => {
   // You can update a story card
   // updateStoryCard(0, 'exampleKey', 'exampleEntry', 'exampleType', 'exampleName', 'exampleNotes')
 
+  // BEST PRACTICE: Reading story cards safely
+  // function getStoryCardEntry(cardKey) {
+  //   if (typeof storyCards === 'undefined' || !storyCards || storyCards.length === 0) {
+  //     return ""
+  //   }
+  //   for (let i = 0; i < storyCards.length; i++) {
+  //     if (storyCards[i] && storyCards[i].keys === cardKey) {
+  //       return storyCards[i].entry || ""
+  //     }
+  //   }
+  //   return ""
+  // }
+
+  // ARKHAM ENGINE FEATURE: PlayersAuthorsNote story card
+  // The Arkham Fate Engine automatically creates a story card called
+  // 'PlayersAuthorsNote' on turn 1. Edit this card to add custom
+  // directives that will be appended to the author's note after the
+  // story arc information.
+
   // ========================================
   // INFO OBJECT (TURN METADATA)
   // ========================================

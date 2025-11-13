@@ -486,21 +486,19 @@ function randomChoice(array) {
   return array[randomint(0, array.length - 1)]
 }
 
-function extractUserAuthorsNote(fullNote) {
-  if (!fullNote) return ""
-
-  const separator = " --- "
-  const separatorIndex = fullNote.indexOf(separator)
-
-  if (separatorIndex !== -1) {
-    return fullNote.substring(separatorIndex + separator.length)
-  }
-
-  if (fullNote.includes("Story Phase:") || fullNote.includes("[Phase:")) {
+function getStoryCardEntry(cardKey) {
+  // Safely retrieve a story card's entry value by its key
+  if (typeof storyCards === 'undefined' || !storyCards || storyCards.length === 0) {
     return ""
   }
 
-  return fullNote
+  for (let i = 0; i < storyCards.length; i++) {
+    if (storyCards[i] && storyCards[i].keys === cardKey) {
+      return storyCards[i].entry || ""
+    }
+  }
+
+  return ""
 }
 
 function countWords(text, wordList) {
@@ -602,6 +600,20 @@ const modifier = (text) => {
   }
 
   state.turnCount++
+
+  /* --- STORY CARD INITIALIZATION --- */
+  // Create PlayersAuthorsNote story card on turn 1 (first execution)
+  if (state.turnCount === 1) {
+    addStoryCard(
+      'PlayersAuthorsNote',
+      '',
+      'memory',
+      'Player\'s Author\'s Note',
+      'This card allows you to add custom content to the author\'s note. Edit this card to add your own directives that will appear after the story arc information.',
+      { returnCard: false }
+    )
+    log("PlayersAuthorsNote story card created. Edit it to add custom author\'s note content.")
+  }
 
   /* --- AUTHORS NOTE LOCK --- */
   if (state.authorsNoteLockCounter > 0 && !isPlayerTurn) {
@@ -1131,9 +1143,9 @@ const modifier = (text) => {
   }
 
   /* --- ASSEMBLE FINAL AUTHORS NOTE --- */
-  // CRITICAL FIX: Check if state.memory exists before accessing
-  const currentUserNote = state.memory ? extractUserAuthorsNote(state.memory.authorsNote) : ""
-  const userNoteSection = currentUserNote ? " --- " + currentUserNote : ""
+  // Read player's custom content from story card
+  const playerAuthorsNote = getStoryCardEntry('PlayersAuthorsNote')
+  const userNoteSection = playerAuthorsNote ? " --- " + playerAuthorsNote : ""
 
   let finalNote = ""
 
