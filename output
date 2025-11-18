@@ -123,6 +123,313 @@ state.enableGenreDetection = true                   // Boolean
 state.enableLocationTracking = true                 // Boolean
 state.enableBonepokeSystem = true                   // Boolean
 
+// Debug System Configuration
+state.debugLevel = 3                                // 0=NONE, 1=ERROR, 2=WARN, 3=INFO, 4=DEBUG, 5=TRACE
+state.debugCategories = {
+  INIT: true,      // Initialization events
+  TEMP: true,      // Temperature/heat system
+  HP: true,        // Health system
+  SP: true,        // Sanity system
+  GRACE: true,     // Grace period
+  WORDS: false,    // Word detection (verbose)
+  STORY: true,     // Story cards/authors note
+  PERF: false      // Performance monitoring (expensive)
+}
+state.debugHistoryEnabled = false                   // Store debug history
+state.debugHistoryMaxSize = 100                     // Maximum history entries
+
+// Performance Monitoring Configuration
+state.enablePerformanceMonitoring = false           // Toggle performance profiling
+state.performanceWarningThreshold = 1000            // Warn if >1000ms
+state.performanceCriticalThreshold = 2000           // Error if >2000ms
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   DEBUG SYSTEM
+   ═══════════════════════════════════════════════════════════════════ */
+
+// Debug level constants
+const DEBUG = {
+  // Levels
+  NONE: 0,
+  ERROR: 1,
+  WARN: 2,
+  INFO: 3,
+  DEBUG: 4,
+  TRACE: 5,
+
+  // Categories
+  INIT: 'INIT',
+  TEMP: 'TEMP',
+  HP: 'HP',
+  SP: 'SP',
+  GRACE: 'GRACE',
+  WORDS: 'WORDS',
+  STORY: 'STORY',
+  PERF: 'PERF'
+}
+
+/**
+ * Centralized logging function with level and category filtering
+ * @param {number} level - Debug level (0-5)
+ * @param {string} category - Debug category
+ * @param {string} message - Log message
+ * @param {*} data - Optional data to log
+ */
+function debugLog(level, category, message, data) {
+  // Check if logging enabled for this level and category
+  if (typeof state.debugLevel === 'undefined') state.debugLevel = 3
+  if (level > state.debugLevel) return
+
+  if (state.debugCategories && !state.debugCategories[category]) return
+
+  // Format message with timestamp, level, category
+  const timestamp = state.turnCount || 0
+  const levelNames = ['NONE', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE']
+  const levelName = levelNames[level] || 'UNKNOWN'
+  const prefix = "[T" + timestamp + "][" + levelName + "][" + category + "]"
+
+  // Log with optional data
+  if (data !== undefined && data !== null) {
+    try {
+      const dataStr = typeof data === 'object' ? JSON.stringify(data) : String(data)
+      log(prefix + " " + message + " | " + dataStr)
+    } catch(e) {
+      log(prefix + " " + message + " | [Data serialization failed]")
+    }
+  } else {
+    log(prefix + " " + message)
+  }
+
+  // Store in debug history if enabled
+  if (state.debugHistoryEnabled) {
+    if (!state.debugHistory) state.debugHistory = []
+
+    state.debugHistory.push({
+      turn: timestamp,
+      level: levelName,
+      category: category,
+      message: message,
+      data: data
+    })
+
+    // Limit history size
+    if (state.debugHistory.length > state.debugHistoryMaxSize) {
+      state.debugHistory.shift()
+    }
+  }
+}
+
+/**
+ * Log error message (level 1)
+ */
+function logError(category, message, data) {
+  debugLog(DEBUG.ERROR, category, message, data)
+}
+
+/**
+ * Log warning message (level 2)
+ */
+function logWarn(category, message, data) {
+  debugLog(DEBUG.WARN, category, message, data)
+}
+
+/**
+ * Log info message (level 3)
+ */
+function logInfo(category, message, data) {
+  debugLog(DEBUG.INFO, category, message, data)
+}
+
+/**
+ * Log debug message (level 4)
+ */
+function logDebug(category, message, data) {
+  debugLog(DEBUG.DEBUG, category, message, data)
+}
+
+/**
+ * Log trace message (level 5)
+ */
+function logTrace(category, message, data) {
+  debugLog(DEBUG.TRACE, category, message, data)
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   PERFORMANCE MONITORING
+   ═══════════════════════════════════════════════════════════════════ */
+
+/**
+ * Start performance timer for a section
+ * @param {string} section - Section name
+ * @returns {Object|null} Timer object or null if monitoring disabled
+ */
+function perfStart(section) {
+  if (!state.enablePerformanceMonitoring) return null
+
+  return {
+    section: section,
+    startTime: Date.now()
+  }
+}
+
+/**
+ * End performance timer and log results
+ * @param {Object} perfTimer - Timer object from perfStart()
+ * @returns {number|null} Duration in ms or null
+ */
+function perfEnd(perfTimer) {
+  if (!perfTimer || !state.enablePerformanceMonitoring) return null
+
+  const endTime = Date.now()
+  const duration = endTime - perfTimer.startTime
+
+  // Initialize performance metrics if needed
+  if (!state.performanceMetrics) {
+    state.performanceMetrics = {
+      sections: {}
+    }
+  }
+
+  // Store metric
+  if (!state.performanceMetrics.sections[perfTimer.section]) {
+    state.performanceMetrics.sections[perfTimer.section] = []
+  }
+  state.performanceMetrics.sections[perfTimer.section].push(duration)
+
+  // Keep only last 20 measurements per section
+  if (state.performanceMetrics.sections[perfTimer.section].length > 20) {
+    state.performanceMetrics.sections[perfTimer.section].shift()
+  }
+
+  // Check thresholds
+  if (duration > state.performanceCriticalThreshold) {
+    logError(DEBUG.PERF, "CRITICAL: Section '" + perfTimer.section + "' took " + duration + "ms")
+  } else if (duration > state.performanceWarningThreshold) {
+    logWarn(DEBUG.PERF, "WARNING: Section '" + perfTimer.section + "' took " + duration + "ms")
+  } else {
+    logTrace(DEBUG.PERF, "Section '" + perfTimer.section + "' completed in " + duration + "ms")
+  }
+
+  return duration
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   ERROR HANDLING
+   ═══════════════════════════════════════════════════════════════════ */
+
+// Error severity levels
+const ERROR_SEVERITY = {
+  RECOVERABLE: 'RECOVERABLE',
+  WARNING: 'WARNING',
+  CRITICAL: 'CRITICAL',
+  FATAL: 'FATAL'
+}
+
+/**
+ * Centralized error handler
+ * @param {string} severity - Error severity level
+ * @param {string} category - Debug category
+ * @param {string} message - Error message
+ * @param {Error} error - Error object (optional)
+ * @param {*} context - Additional context (optional)
+ * @returns {boolean} True if can continue, false if must halt
+ */
+function handleError(severity, category, message, error, context) {
+  // Log error with full context
+  const errorData = {
+    severity: severity,
+    message: message,
+    error: error ? error.toString() : null,
+    context: context
+  }
+
+  logError(category, message, errorData)
+
+  // Store in error history
+  if (!state.errorHistory) state.errorHistory = []
+  state.errorHistory.push({
+    turn: state.turnCount,
+    severity: severity,
+    category: category,
+    message: message
+  })
+
+  // Limit history size
+  if (state.errorHistory.length > 50) {
+    state.errorHistory.shift()
+  }
+
+  // Take action based on severity
+  switch(severity) {
+    case ERROR_SEVERITY.RECOVERABLE:
+      return true
+
+    case ERROR_SEVERITY.WARNING:
+      logWarn(category, "Recoverable warning: " + message)
+      return true
+
+    case ERROR_SEVERITY.CRITICAL:
+      logError(category, "CRITICAL ERROR: Entering safe mode")
+      enterSafeMode()
+      return false
+
+    case ERROR_SEVERITY.FATAL:
+      logError(category, "FATAL ERROR: Script halted")
+      if (state.message) {
+        state.message = "⚠️ Script Error: " + message
+      }
+      return false
+  }
+
+  return true
+}
+
+/**
+ * Enter safe mode - disable non-critical features
+ */
+function enterSafeMode() {
+  if (state.safeMode) return
+
+  state.safeMode = true
+
+  // Save current config
+  if (!state.savedConfig) {
+    state.savedConfig = {
+      enableGenreDetection: state.enableGenreDetection,
+      enableBonepokeSystem: state.enableBonepokeSystem,
+      enableLocationTracking: state.enableLocationTracking
+    }
+  }
+
+  // Disable non-critical features
+  state.enableGenreDetection = false
+  state.enableBonepokeSystem = false
+  state.enableLocationTracking = false
+
+  logWarn(DEBUG.INIT, "Safe mode activated")
+}
+
+/**
+ * Exit safe mode - restore all features
+ */
+function exitSafeMode() {
+  if (!state.safeMode) return
+
+  state.safeMode = false
+
+  // Restore features from saved config
+  if (state.savedConfig) {
+    state.enableGenreDetection = state.savedConfig.enableGenreDetection
+    state.enableBonepokeSystem = state.savedConfig.enableBonepokeSystem
+    state.enableLocationTracking = state.savedConfig.enableLocationTracking
+  }
+
+  logInfo(DEBUG.INIT, "Safe mode deactivated")
+}
+
 
 /* === VALIDATION FUNCTION === */
 
