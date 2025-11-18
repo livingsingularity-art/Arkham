@@ -938,6 +938,18 @@ const modifier = (text) => {
       { returnCard: false }
     )
     logInfo(DEBUG.STORY, "PlayersAuthorsNote story card created")
+
+    // Create ArkhamStatus story card for HP/SP tracking and grace period control
+    const initialStatusEntry = "HP: " + state.hp + "/" + state.maximumHP + " | SP: " + state.sp + "/" + state.maximumSP + " | Grace Period Turns: " + state.gracePeriodDuration
+    addStoryCard(
+      'ArkhamStatus',
+      initialStatusEntry,
+      'memory',
+      'Arkham System Status',
+      'This card displays current HP and SP. Edit the "Grace Period Turns" value to change grace period duration (0-100). Changes take effect next turn.',
+      { returnCard: false }
+    )
+    logInfo(DEBUG.STORY, "ArkhamStatus story card created")
   }
 
   /* --- AUTHORS NOTE LOCK --- */
@@ -1100,6 +1112,39 @@ const modifier = (text) => {
     const feedbackMessage = "[System: " + feedback + "]"
     logInfo(DEBUG.INIT, "Player command executed", {command: command, feedback: feedback})
     return { text: feedbackMessage }
+  }
+
+  /* --- ARKHAM STATUS STORY CARD UPDATE --- */
+  // Read grace period duration from story card (player can edit this)
+  const arkhamStatusEntry = getStoryCardEntry('ArkhamStatus')
+  if (arkhamStatusEntry) {
+    // Parse grace period value from story card
+    const gracePeriodMatch = arkhamStatusEntry.match(/Grace Period Turns:\s*(\d+)/)
+    if (gracePeriodMatch) {
+      const playerSetGracePeriod = parseInt(gracePeriodMatch[1])
+      if (!isNaN(playerSetGracePeriod) && playerSetGracePeriod >= 0 && playerSetGracePeriod <= 100) {
+        if (state.gracePeriodDuration !== playerSetGracePeriod) {
+          state.gracePeriodDuration = playerSetGracePeriod
+          logInfo(DEBUG.GRACE, "Grace period duration updated from story card", {newDuration: playerSetGracePeriod})
+        }
+      }
+    }
+  }
+
+  // Update ArkhamStatus story card with current values every turn
+  if (state.turnCount > 0) {
+    const currentStatusEntry = "HP: " + state.hp + "/" + state.maximumHP + " | SP: " + state.sp + "/" + state.maximumSP + " | Grace Period Turns: " + state.gracePeriodDuration
+
+    // Find and update the ArkhamStatus card
+    if (typeof storyCards !== 'undefined' && storyCards && storyCards.length > 0) {
+      for (let i = 0; i < storyCards.length; i++) {
+        if (storyCards[i] && storyCards[i].keys === 'ArkhamStatus') {
+          updateStoryCard(i, 'ArkhamStatus', currentStatusEntry, 'memory', 'Arkham System Status', 'This card displays current HP and SP. Edit the "Grace Period Turns" value to change grace period duration (0-100). Changes take effect next turn.')
+          logTrace(DEBUG.STORY, "ArkhamStatus story card updated", {hp: state.hp, sp: state.sp, graceDuration: state.gracePeriodDuration})
+          break
+        }
+      }
+    }
   }
 
   /* --- GRACE PERIOD COUNTDOWN --- */

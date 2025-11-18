@@ -121,6 +121,18 @@ const modifier = (text) => {
   // directives that will be appended to the author's note after the
   // story arc information.
 
+  // ARKHAM ENGINE FEATURE: ArkhamStatus story card
+  // The Arkham Fate Engine creates a story card called 'ArkhamStatus'
+  // on turn 1 that displays:
+  // - Current HP / Maximum HP
+  // - Current SP / Maximum SP
+  // - Grace Period Turns (editable)
+  //
+  // You can edit the "Grace Period Turns" value to change how long
+  // the grace period lasts (0-100 turns). Changes take effect on
+  // the next turn. The card automatically updates with current HP/SP
+  // values every turn.
+
   // ========================================
   // INFO OBJECT (TURN METADATA)
   // ========================================
