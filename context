@@ -1,5 +1,5 @@
 // ============================================================================
-// AI DUNGEON SCRIPTING REFERENCE - BEST PRACTICES EDITION
+// AI DUNGEON SCRIPTING REFERENCE - BEST PRACTICES EDITION (v2.3)
 //
 // This template demonstrates the AI Dungeon scripting API with production-
 // ready best practices based on extensive testing and validation.
@@ -14,6 +14,8 @@
 // 3. Validate all configuration values with min/max clamping
 // 4. Use state object for persistent data between turns
 // 5. Check typeof before accessing potentially undefined objects
+// 6. Use categorized debug logging for maintainability (v2.3+)
+// 7. Implement performance monitoring for critical sections (v2.3+)
 // ============================================================================
 
 // Every script needs a modifier function
@@ -162,7 +164,61 @@ const modifier = (text) => {
 }
 
 // ============================================================================
-// ADDITIONAL BEST PRACTICES FROM ARKHAM FATE ENGINE v2.2
+// ARKHAM FATE ENGINE v2.3 DEBUG SYSTEM
+// ============================================================================
+
+// The Arkham Fate Engine v2.3 introduces a comprehensive debug system with
+// categorized logging, performance monitoring, and player-accessible commands.
+
+// DEBUG LEVELS (0-5):
+// 0 = NONE  - No logging
+// 1 = ERROR - Critical errors only
+// 2 = WARN  - Warnings and errors
+// 3 = INFO  - General information (default)
+// 4 = DEBUG - Detailed debugging
+// 5 = TRACE - Very verbose tracing
+
+// DEBUG CATEGORIES:
+// INIT  - System initialization and configuration
+// TEMP  - Temperature/heat mechanics
+// HP    - Health point system
+// SP    - Sanity point system
+// GRACE - Grace period mechanics
+// WORDS - Word detection (verbose)
+// STORY - Story cards and author's note
+// PERF  - Performance monitoring
+
+// PLAYER COMMANDS:
+// /debug <0-5>        - Set debug level
+// /debug <category>   - Toggle category on/off
+// /debug status       - Show debug configuration
+// /perf on/off        - Enable/disable performance monitoring
+// /perf status        - Show performance metrics
+
+// EXAMPLE DEBUG LOGGING:
+// Instead of: log("System initialized")
+// Use: logInfo(DEBUG.INIT, "System initialized", {turnCount: 1})
+
+// EXAMPLE PERFORMANCE MONITORING:
+// const perfTimer = perfStart('my_function')
+// // ... do expensive work ...
+// perfEnd(perfTimer)  // Logs if >1000ms
+
+// DEBUG SYSTEM FUNCTIONS AVAILABLE IN INPUT/OUTPUT SCRIPTS:
+// - debugLog(level, category, message, data)
+// - logError(category, message, data)
+// - logWarn(category, message, data)
+// - logInfo(category, message, data)
+// - logDebug(category, message, data)
+// - logTrace(category, message, data)
+// - perfStart(section)
+// - perfEnd(perfTimer)
+// - handleError(severity, category, message, error, context)
+// - enterSafeMode()
+// - exitSafeMode()
+
+// ============================================================================
+// ADDITIONAL BEST PRACTICES FROM ARKHAM FATE ENGINE v2.2+
 // ============================================================================
 
 // 1. VALUE VALIDATION AND CLAMPING
