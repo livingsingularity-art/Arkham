@@ -137,23 +137,23 @@ state.enableGenreDetection = true                   // Boolean
 state.enableLocationTracking = true                 // Boolean
 state.enableBonepokeSystem = true                   // Boolean
 
-// Debug System Configuration
-state.debugLevel = 3                                // 0=NONE, 1=ERROR, 2=WARN, 3=INFO, 4=DEBUG, 5=TRACE
+// Debug System Configuration - ALL FEATURES ACTIVE
+state.debugLevel = 5                                // 0=NONE, 1=ERROR, 2=WARN, 3=INFO, 4=DEBUG, 5=TRACE
 state.debugCategories = {
   INIT: true,      // Initialization events
   TEMP: true,      // Temperature/heat system
   HP: true,        // Health system
   SP: true,        // Sanity system
   GRACE: true,     // Grace period
-  WORDS: false,    // Word detection (verbose)
+  WORDS: true,     // Word detection (verbose) - NOW ENABLED
   STORY: true,     // Story cards/authors note
-  PERF: false      // Performance monitoring (expensive)
+  PERF: true       // Performance monitoring (expensive) - NOW ENABLED
 }
-state.debugHistoryEnabled = false                   // Store debug history
+state.debugHistoryEnabled = true                    // Store debug history - NOW ENABLED
 state.debugHistoryMaxSize = 100                     // Maximum history entries
 
-// Performance Monitoring Configuration
-state.enablePerformanceMonitoring = false           // Toggle performance profiling
+// Performance Monitoring Configuration - FULLY ENABLED
+state.enablePerformanceMonitoring = true            // Toggle performance profiling - NOW ENABLED
 state.performanceWarningThreshold = 1000            // Warn if >1000ms
 state.performanceCriticalThreshold = 2000           // Error if >2000ms
 
