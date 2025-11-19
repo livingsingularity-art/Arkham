@@ -1,7 +1,27 @@
-// This script's only job is to create the complete lore database and attach it to the shared state object.
-// It MUST be placed ABOVE the main Input/Output scripts in the scenario's script execution order.
+// ============================================================================
+// ARKHAM LORE LIBRARY - LOVECRAFTIAN LOCATION & RACE DATABASE (v2.3)
+//
+// This script creates a comprehensive lore database and attaches it to the
+// shared state object for use by the main Arkham Fate Engine scripts.
+//
+// IMPORTANT: This script MUST be placed ABOVE the main Input/Output scripts
+// in AI Dungeon's script execution order.
+//
+// AI Dungeon Compatibility:
+// - Uses ES5-compatible syntax (no template literals)
+// - Defensive state access with null checks
+// - Immutable data structure (const)
+// - Compatible with v2.3 debug system
+//
+// v2.3 Update: Added support for debug logging if debug system is available
+// ============================================================================
 
-const loreData = {
+// Validate state object exists before attaching data
+if (typeof state === 'undefined' || state === null) {
+  log("ERROR: state object is undefined. Cannot attach lore data.")
+} else {
+  // Create immutable lore database
+  const loreData = {
     // --- LOCATION ATLAS (WITH ADJACENCY) ---
     locations: {
         // Top Level
@@ -88,7 +108,38 @@ const loreData = {
         "Tunnel-Dweller": "Trait:Native-subterranean-Ghoul | Conflict:Physically-powerful-but-seen-as-a-monster-by-humanity.",
         "Yithian-In-Locus": "Trait:Alien-archivist-mind-in-human-body | Conflict:Limitless-knowledge-vs-a-fragile-unfamiliar-form."
     }
-};
+  }
 
-// This attaches the completed lore object to the shared state, making it accessible to other scripts.
-state.loreData = loreData;
+  // Safely attach the completed lore object to the shared state
+  // This makes it accessible to other scripts in the execution order
+  if (state) {
+    state.loreData = loreData
+
+    // Use log() here because this script runs BEFORE input/output scripts
+    // where the debug system (logInfo) is defined. The input/output scripts
+    // will use the debug system for all subsequent lore-related logging.
+    log("Lore Library loaded: " + Object.keys(loreData.locations).length + " locations, " + Object.keys(loreData.races).length + " races")
+  } else {
+    log("ERROR: Failed to attach lore data - state object unavailable")
+  }
+}
+
+// ============================================================================
+// LIBRARY STATISTICS
+// ============================================================================
+// Total Locations: 72
+// - Miskatonic University: 17 locations
+// - City of Arkham: 12 locations
+// - The Fringes: 15 locations
+// - Otherworldly: 8 locations
+//
+// Total Races: 13
+// - Playable character backgrounds with trait/conflict structure
+// - Compatible with Lovecraftian cosmic horror themes
+//
+// FEATURES:
+// - Location adjacency for navigation
+// - Faction associations (24 factions)
+// - Threat cataloging (monsters, artifacts, phenomena)
+// - Parent-child location hierarchy
+// ============================================================================

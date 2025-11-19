@@ -1,5 +1,5 @@
 /* ============================================================================
-   ARKHAM FATE ENGINE - HYBRID EDITION (v2.3 - DEBUG SYSTEM)
+   ARKHAM FATE ENGINE - HYBRID EDITION (v2.2 - STABILITY FIXED)
 
    A comprehensive narrative pacing system combining:
    - Dynamic story temperature/heat mechanics
@@ -9,24 +9,10 @@
    - Location tracking and lore integration
    - Whip-poor-will stalking mechanic
    - Configurable grace period for horror content
-   - User author's note preservation
+   - PlayersAuthorsNote story card for custom directives
    - Player commands for manual control
-   - Comprehensive debug system with 5 levels and 8 categories
-   - Performance monitoring for optimization
-   - Advanced error handling with safe mode
 
-   v2.3 Debug System Features:
-   - 5-tier debug levels: NONE, ERROR, WARN, INFO, DEBUG, TRACE
-   - 8 debug categories: INIT, TEMP, HP, SP, GRACE, WORDS, STORY, PERF
-   - Player commands: /debug, /perf for runtime control
-   - Performance profiling with configurable thresholds
-   - Debug history storage (optional, max 100 entries)
-   - Error history tracking (last 50 errors)
-   - Safe mode for critical error recovery
-   - All log() calls refactored to use debugLog() system
-   - Performance instrumentation on critical sections
-
-   v2.2 Stability Fixes (preserved):
+   v2.2 Stability Fixes:
    - CRITICAL: Fixed unsafe state.memory access (crash prevention)
    - HIGH: Fixed temperatureIncreaseChance reset using configured value
    - HIGH: Fixed threshold validation with second pass
@@ -136,313 +122,6 @@ state.authorsNoteLockDuration = 5                   // Range: 0-20
 state.enableGenreDetection = true                   // Boolean
 state.enableLocationTracking = true                 // Boolean
 state.enableBonepokeSystem = true                   // Boolean
-
-// Debug System Configuration - ALL FEATURES ACTIVE
-state.debugLevel = 5                                // 0=NONE, 1=ERROR, 2=WARN, 3=INFO, 4=DEBUG, 5=TRACE
-state.debugCategories = {
-  INIT: true,      // Initialization events
-  TEMP: true,      // Temperature/heat system
-  HP: true,        // Health system
-  SP: true,        // Sanity system
-  GRACE: true,     // Grace period
-  WORDS: true,     // Word detection (verbose) - NOW ENABLED
-  STORY: true,     // Story cards/authors note
-  PERF: true       // Performance monitoring (expensive) - NOW ENABLED
-}
-state.debugHistoryEnabled = true                    // Store debug history - NOW ENABLED
-state.debugHistoryMaxSize = 100                     // Maximum history entries
-
-// Performance Monitoring Configuration - FULLY ENABLED
-state.enablePerformanceMonitoring = true            // Toggle performance profiling - NOW ENABLED
-state.performanceWarningThreshold = 1000            // Warn if >1000ms
-state.performanceCriticalThreshold = 2000           // Error if >2000ms
-
-
-/* ═══════════════════════════════════════════════════════════════════
-   DEBUG SYSTEM
-   ═══════════════════════════════════════════════════════════════════ */
-
-// Debug level constants
-const DEBUG = {
-  // Levels
-  NONE: 0,
-  ERROR: 1,
-  WARN: 2,
-  INFO: 3,
-  DEBUG: 4,
-  TRACE: 5,
-
-  // Categories
-  INIT: 'INIT',
-  TEMP: 'TEMP',
-  HP: 'HP',
-  SP: 'SP',
-  GRACE: 'GRACE',
-  WORDS: 'WORDS',
-  STORY: 'STORY',
-  PERF: 'PERF'
-}
-
-/**
- * Centralized logging function with level and category filtering
- * @param {number} level - Debug level (0-5)
- * @param {string} category - Debug category
- * @param {string} message - Log message
- * @param {*} data - Optional data to log
- */
-function debugLog(level, category, message, data) {
-  // Check if logging enabled for this level and category
-  if (typeof state.debugLevel === 'undefined') state.debugLevel = 3
-  if (level > state.debugLevel) return
-
-  if (state.debugCategories && !state.debugCategories[category]) return
-
-  // Format message with timestamp, level, category
-  const timestamp = state.turnCount || 0
-  const levelNames = ['NONE', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE']
-  const levelName = levelNames[level] || 'UNKNOWN'
-  const prefix = "[T" + timestamp + "][" + levelName + "][" + category + "]"
-
-  // Log with optional data
-  if (data !== undefined && data !== null) {
-    try {
-      const dataStr = typeof data === 'object' ? JSON.stringify(data) : String(data)
-      log(prefix + " " + message + " | " + dataStr)
-    } catch(e) {
-      log(prefix + " " + message + " | [Data serialization failed]")
-    }
-  } else {
-    log(prefix + " " + message)
-  }
-
-  // Store in debug history if enabled
-  if (state.debugHistoryEnabled) {
-    if (!state.debugHistory) state.debugHistory = []
-
-    state.debugHistory.push({
-      turn: timestamp,
-      level: levelName,
-      category: category,
-      message: message,
-      data: data
-    })
-
-    // Limit history size
-    if (state.debugHistory.length > state.debugHistoryMaxSize) {
-      state.debugHistory.shift()
-    }
-  }
-}
-
-/**
- * Log error message (level 1)
- */
-function logError(category, message, data) {
-  debugLog(DEBUG.ERROR, category, message, data)
-}
-
-/**
- * Log warning message (level 2)
- */
-function logWarn(category, message, data) {
-  debugLog(DEBUG.WARN, category, message, data)
-}
-
-/**
- * Log info message (level 3)
- */
-function logInfo(category, message, data) {
-  debugLog(DEBUG.INFO, category, message, data)
-}
-
-/**
- * Log debug message (level 4)
- */
-function logDebug(category, message, data) {
-  debugLog(DEBUG.DEBUG, category, message, data)
-}
-
-/**
- * Log trace message (level 5)
- */
-function logTrace(category, message, data) {
-  debugLog(DEBUG.TRACE, category, message, data)
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════
-   PERFORMANCE MONITORING
-   ═══════════════════════════════════════════════════════════════════ */
-
-/**
- * Start performance timer for a section
- * @param {string} section - Section name
- * @returns {Object|null} Timer object or null if monitoring disabled
- */
-function perfStart(section) {
-  if (!state.enablePerformanceMonitoring) return null
-
-  return {
-    section: section,
-    startTime: Date.now()
-  }
-}
-
-/**
- * End performance timer and log results
- * @param {Object} perfTimer - Timer object from perfStart()
- * @returns {number|null} Duration in ms or null
- */
-function perfEnd(perfTimer) {
-  if (!perfTimer || !state.enablePerformanceMonitoring) return null
-
-  const endTime = Date.now()
-  const duration = endTime - perfTimer.startTime
-
-  // Initialize performance metrics if needed
-  if (!state.performanceMetrics) {
-    state.performanceMetrics = {
-      sections: {}
-    }
-  }
-
-  // Store metric
-  if (!state.performanceMetrics.sections[perfTimer.section]) {
-    state.performanceMetrics.sections[perfTimer.section] = []
-  }
-  state.performanceMetrics.sections[perfTimer.section].push(duration)
-
-  // Keep only last 20 measurements per section
-  if (state.performanceMetrics.sections[perfTimer.section].length > 20) {
-    state.performanceMetrics.sections[perfTimer.section].shift()
-  }
-
-  // Check thresholds
-  if (duration > state.performanceCriticalThreshold) {
-    logError(DEBUG.PERF, "CRITICAL: Section '" + perfTimer.section + "' took " + duration + "ms")
-  } else if (duration > state.performanceWarningThreshold) {
-    logWarn(DEBUG.PERF, "WARNING: Section '" + perfTimer.section + "' took " + duration + "ms")
-  } else {
-    logTrace(DEBUG.PERF, "Section '" + perfTimer.section + "' completed in " + duration + "ms")
-  }
-
-  return duration
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════
-   ERROR HANDLING
-   ═══════════════════════════════════════════════════════════════════ */
-
-// Error severity levels
-const ERROR_SEVERITY = {
-  RECOVERABLE: 'RECOVERABLE',
-  WARNING: 'WARNING',
-  CRITICAL: 'CRITICAL',
-  FATAL: 'FATAL'
-}
-
-/**
- * Centralized error handler
- * @param {string} severity - Error severity level
- * @param {string} category - Debug category
- * @param {string} message - Error message
- * @param {Error} error - Error object (optional)
- * @param {*} context - Additional context (optional)
- * @returns {boolean} True if can continue, false if must halt
- */
-function handleError(severity, category, message, error, context) {
-  // Log error with full context
-  const errorData = {
-    severity: severity,
-    message: message,
-    error: error ? error.toString() : null,
-    context: context
-  }
-
-  logError(category, message, errorData)
-
-  // Store in error history
-  if (!state.errorHistory) state.errorHistory = []
-  state.errorHistory.push({
-    turn: state.turnCount,
-    severity: severity,
-    category: category,
-    message: message
-  })
-
-  // Limit history size
-  if (state.errorHistory.length > 50) {
-    state.errorHistory.shift()
-  }
-
-  // Take action based on severity
-  switch(severity) {
-    case ERROR_SEVERITY.RECOVERABLE:
-      return true
-
-    case ERROR_SEVERITY.WARNING:
-      logWarn(category, "Recoverable warning: " + message)
-      return true
-
-    case ERROR_SEVERITY.CRITICAL:
-      logError(category, "CRITICAL ERROR: Entering safe mode")
-      enterSafeMode()
-      return false
-
-    case ERROR_SEVERITY.FATAL:
-      logError(category, "FATAL ERROR: Script halted")
-      if (state.message) {
-        state.message = "⚠️ Script Error: " + message
-      }
-      return false
-  }
-
-  return true
-}
-
-/**
- * Enter safe mode - disable non-critical features
- */
-function enterSafeMode() {
-  if (state.safeMode) return
-
-  state.safeMode = true
-
-  // Save current config
-  if (!state.savedConfig) {
-    state.savedConfig = {
-      enableGenreDetection: state.enableGenreDetection,
-      enableBonepokeSystem: state.enableBonepokeSystem,
-      enableLocationTracking: state.enableLocationTracking
-    }
-  }
-
-  // Disable non-critical features
-  state.enableGenreDetection = false
-  state.enableBonepokeSystem = false
-  state.enableLocationTracking = false
-
-  logWarn(DEBUG.INIT, "Safe mode activated")
-}
-
-/**
- * Exit safe mode - restore all features
- */
-function exitSafeMode() {
-  if (!state.safeMode) return
-
-  state.safeMode = false
-
-  // Restore features from saved config
-  if (state.savedConfig) {
-    state.enableGenreDetection = state.savedConfig.enableGenreDetection
-    state.enableBonepokeSystem = state.savedConfig.enableBonepokeSystem
-    state.enableLocationTracking = state.savedConfig.enableLocationTracking
-  }
-
-  logInfo(DEBUG.INIT, "Safe mode deactivated")
-}
 
 
 /* === VALIDATION FUNCTION === */
@@ -876,12 +555,8 @@ function getRankedTones(text, dictionary) {
 /* === MAIN MODIFIER FUNCTION === */
 
 const modifier = (text) => {
-  const perfTotal = perfStart('total_modifier')
-
   // Validate configuration on every turn
-  const perfConfig = perfStart('config_validation')
   validateAndClampConfig()
-  perfEnd(perfConfig)
 
   // Safely check if this is a player turn
   const isPlayerTurn = (typeof info !== 'undefined' && info !== null && info.actionType === 'input')
@@ -897,7 +572,7 @@ const modifier = (text) => {
     state.turnCount = 0
     // Store initial temperatureIncreaseChance for resetting after bonepoke
     state.baseTemperatureIncreaseChance = state.temperatureIncreaseChance
-    logInfo(DEBUG.INIT, "System state initialized")
+    log("System state initialized.")
   }
 
   if (typeof state.storyTemperature === 'undefined' || state.storyTemperature === null) {
@@ -906,18 +581,18 @@ const modifier = (text) => {
 
   if ((typeof state.hp === 'undefined' || state.hp === null) && state.enableHPSystem) {
     state.hp = state.initialHP
-    logInfo(DEBUG.HP, "HP System enabled", {hp: state.hp})
+    log("HP System enabled. Starting HP: " + state.hp)
   }
 
   if ((typeof state.sp === 'undefined' || state.sp === null) && state.enableSPSystem) {
     state.sp = state.initialSP
-    logInfo(DEBUG.SP, "SP System enabled", {sp: state.sp})
+    log("SP System enabled. Starting SP: " + state.sp)
   }
 
   if ((typeof state.gracePeriodActive === 'undefined' || state.gracePeriodActive === null) && state.enableGracePeriod) {
     state.gracePeriodActive = true
     state.gracePeriodTurnsLeft = state.gracePeriodDuration
-    logInfo(DEBUG.GRACE, "Grace Period activated", {duration: state.gracePeriodDuration})
+    log("Grace Period activated for " + state.gracePeriodDuration + " turns.")
   }
 
   if (typeof state.turnCount === 'undefined' || state.turnCount === null) {
@@ -937,19 +612,7 @@ const modifier = (text) => {
       'This card allows you to add custom content to the author\'s note. Edit this card to add your own directives that will appear after the story arc information.',
       { returnCard: false }
     )
-    logInfo(DEBUG.STORY, "PlayersAuthorsNote story card created")
-
-    // Create ArkhamStatus story card for HP/SP tracking and grace period control
-    const initialStatusEntry = "HP: " + state.hp + "/" + state.maximumHP + " | SP: " + state.sp + "/" + state.maximumSP + " | Grace Period Turns: " + state.gracePeriodDuration
-    addStoryCard(
-      'ArkhamStatus',
-      initialStatusEntry,
-      'memory',
-      'Arkham System Status',
-      'This card displays current HP and SP. Edit the "Grace Period Turns" value to change grace period duration (0-100). Changes take effect next turn.',
-      { returnCard: false }
-    )
-    logInfo(DEBUG.STORY, "ArkhamStatus story card created")
+    log("PlayersAuthorsNote story card created. Edit it to add custom author\'s note content.")
   }
 
   /* --- AUTHORS NOTE LOCK --- */
@@ -958,7 +621,7 @@ const modifier = (text) => {
       state.memory.authorsNote = state.lockedAuthorsNote
     }
     state.authorsNoteLockCounter--
-    logDebug(DEBUG.STORY, "Authors Note lock active", {turnsRemaining: state.authorsNoteLockCounter})
+    log("AN LOCK ACTIVE. Turns remaining: " + state.authorsNoteLockCounter)
     return { text: text }
   }
 
@@ -1044,62 +707,6 @@ const modifier = (text) => {
         if (state.gracePeriodActive) feedback += " | Grace: " + state.gracePeriodTurnsLeft + " turns"
         break
 
-      case 'debug':
-        if (!isNaN(value) && value >= 0 && value <= 5) {
-          state.debugLevel = value
-          const levelNames = ['NONE', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE']
-          feedback = "Debug level set to " + value + " (" + levelNames[value] + ")"
-        } else if (commandArgs[1] === 'status') {
-          const levelNames = ['NONE', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE']
-          feedback = "Debug Level: " + state.debugLevel + " (" + levelNames[state.debugLevel] + ") | Categories: "
-          const activeCategories = []
-          for (const cat in state.debugCategories) {
-            if (state.debugCategories[cat]) activeCategories.push(cat)
-          }
-          feedback += activeCategories.join(',')
-        } else if (commandArgs[1]) {
-          const category = commandArgs[1].toUpperCase()
-          if (state.debugCategories.hasOwnProperty(category)) {
-            state.debugCategories[category] = !state.debugCategories[category]
-            feedback = "Debug category " + category + " " + (state.debugCategories[category] ? "enabled" : "disabled")
-          } else {
-            feedback = "Unknown debug category. Valid: INIT, TEMP, HP, SP, GRACE, WORDS, STORY, PERF"
-          }
-        } else {
-          feedback = "Usage: /debug <0-5> OR /debug <category> OR /debug status"
-        }
-        break
-
-      case 'perf':
-        if (commandArgs[1] === 'on') {
-          state.enablePerformanceMonitoring = true
-          feedback = "Performance monitoring enabled"
-        } else if (commandArgs[1] === 'off') {
-          state.enablePerformanceMonitoring = false
-          feedback = "Performance monitoring disabled"
-        } else if (commandArgs[1] === 'status' || !commandArgs[1]) {
-          feedback = "Performance monitoring: " + (state.enablePerformanceMonitoring ? "ON" : "OFF")
-          if (state.performanceMetrics && state.performanceMetrics.sections) {
-            feedback += " | Sections tracked: "
-            const sections = []
-            for (const section in state.performanceMetrics.sections) {
-              const metrics = state.performanceMetrics.sections[section]
-              if (metrics.length > 0) {
-                const avg = metrics.reduce(function(a, b) { return a + b }, 0) / metrics.length
-                sections.push(section + ":" + Math.round(avg) + "ms")
-              }
-            }
-            if (sections.length > 0) {
-              feedback += sections.join(', ')
-            } else {
-              feedback += "none yet"
-            }
-          }
-        } else {
-          feedback = "Usage: /perf on/off OR /perf status"
-        }
-        break
-
       default:
         return { text: "[System: Unknown command '/" + command + "'.]" }
     }
@@ -1110,51 +717,18 @@ const modifier = (text) => {
     )
 
     const feedbackMessage = "[System: " + feedback + "]"
-    logInfo(DEBUG.INIT, "Player command executed", {command: command, feedback: feedback})
+    log(feedbackMessage)
     return { text: feedbackMessage }
-  }
-
-  /* --- ARKHAM STATUS STORY CARD UPDATE --- */
-  // Read grace period duration from story card (player can edit this)
-  const arkhamStatusEntry = getStoryCardEntry('ArkhamStatus')
-  if (arkhamStatusEntry) {
-    // Parse grace period value from story card
-    const gracePeriodMatch = arkhamStatusEntry.match(/Grace Period Turns:\s*(\d+)/)
-    if (gracePeriodMatch) {
-      const playerSetGracePeriod = parseInt(gracePeriodMatch[1])
-      if (!isNaN(playerSetGracePeriod) && playerSetGracePeriod >= 0 && playerSetGracePeriod <= 100) {
-        if (state.gracePeriodDuration !== playerSetGracePeriod) {
-          state.gracePeriodDuration = playerSetGracePeriod
-          logInfo(DEBUG.GRACE, "Grace period duration updated from story card", {newDuration: playerSetGracePeriod})
-        }
-      }
-    }
-  }
-
-  // Update ArkhamStatus story card with current values every turn
-  if (state.turnCount > 0) {
-    const currentStatusEntry = "HP: " + state.hp + "/" + state.maximumHP + " | SP: " + state.sp + "/" + state.maximumSP + " | Grace Period Turns: " + state.gracePeriodDuration
-
-    // Find and update the ArkhamStatus card
-    if (typeof storyCards !== 'undefined' && storyCards && storyCards.length > 0) {
-      for (let i = 0; i < storyCards.length; i++) {
-        if (storyCards[i] && storyCards[i].keys === 'ArkhamStatus') {
-          updateStoryCard(i, 'ArkhamStatus', currentStatusEntry, 'memory', 'Arkham System Status', 'This card displays current HP and SP. Edit the "Grace Period Turns" value to change grace period duration (0-100). Changes take effect next turn.')
-          logTrace(DEBUG.STORY, "ArkhamStatus story card updated", {hp: state.hp, sp: state.sp, graceDuration: state.gracePeriodDuration})
-          break
-        }
-      }
-    }
   }
 
   /* --- GRACE PERIOD COUNTDOWN --- */
   if (state.gracePeriodActive && state.gracePeriodTurnsLeft > 0) {
     state.gracePeriodTurnsLeft--
-    logDebug(DEBUG.GRACE, "Grace period countdown", {turnsRemaining: state.gracePeriodTurnsLeft})
+    log("Grace period: " + state.gracePeriodTurnsLeft + " turns remaining")
 
     if (state.gracePeriodTurnsLeft <= 0) {
       state.gracePeriodActive = false
-      logInfo(DEBUG.GRACE, "Grace period ended")
+      log("Grace period ended.")
     }
   }
 
@@ -1173,7 +747,7 @@ const modifier = (text) => {
             if (found) {
               if (state.currentLocation !== locKey) {
                 state.currentLocation = locKey
-                logInfo(DEBUG.INIT, "Location updated", {location: locKey})
+                log("Location updated to: " + locKey)
               }
               break
             }
@@ -1184,7 +758,6 @@ const modifier = (text) => {
   }
 
   /* --- WORD COUNTING --- */
-  const perfWords = perfStart('word_counting')
   const conflictCount = countWords(text, conflictWords)
   const calmingCount = countWords(text, calmingWords)
 
@@ -1202,7 +775,6 @@ const modifier = (text) => {
     injuryCount = countWords(text, injuryWords)
     healingCount = countWords(text, healingWords)
   }
-  perfEnd(perfWords)
 
   /* --- TEMPERATURE & HEAT UPDATES --- */
   if (!state.cooldownMode) {
@@ -1219,9 +791,9 @@ const modifier = (text) => {
       state.heat += conflictCount * heatImpact
       if (conflictCount >= tempThresh && state.storyTemperature < maxAllowedTemp) {
         state.storyTemperature += tempImpact
-        logDebug(DEBUG.WORDS, "Conflict words detected - heat and temperature increased", {count: conflictCount, heat: state.heat, temp: state.storyTemperature})
+        log("Detected " + conflictCount + " conflict words. Increasing heat & temperature.")
       } else {
-        logDebug(DEBUG.WORDS, "Conflict words detected - heat increased", {count: conflictCount, heat: state.heat})
+        log("Detected " + conflictCount + " conflict words. Increasing heat.")
       }
     }
 
@@ -1233,9 +805,9 @@ const modifier = (text) => {
       }
       if (calmingCount >= calmThresh) {
         state.storyTemperature -= tempDecrease
-        logDebug(DEBUG.WORDS, "Calming words detected - heat and temperature decreased", {count: calmingCount, heat: state.heat, temp: state.storyTemperature})
+        log("Detected " + calmingCount + " calming words. Decreasing heat & temperature.")
       } else {
-        logDebug(DEBUG.WORDS, "Calming words detected - heat decreased", {count: calmingCount, heat: state.heat})
+        log("Detected " + calmingCount + " calming words. Decreasing heat.")
       }
     }
   }
@@ -1252,13 +824,13 @@ const modifier = (text) => {
     if (injuryCount >= injuryThresh && canBeInjured) {
       const damage = injuryCount * injuryImpact
       state.hp -= damage
-      logDebug(DEBUG.WORDS, "Injury words detected - HP reduced", {count: injuryCount, damage: damage, hp: state.hp})
+      log("Detected " + injuryCount + " injury words. HP reduced by " + damage + ". Current HP: " + state.hp)
     }
 
     if (healingCount >= healThresh) {
       const healing = healingCount * healImpact
       state.hp += healing
-      logDebug(DEBUG.WORDS, "Healing words detected - HP increased", {count: healingCount, healing: healing, hp: state.hp})
+      log("Detected " + healingCount + " healing words. HP increased by " + healing + ". Current HP: " + state.hp)
     }
 
     state.hp = Math.max(0, Math.min(state.hp, state.maximumHP))
@@ -1276,13 +848,13 @@ const modifier = (text) => {
     if (dreadCount >= sanityLossThresh && canLoseSanity) {
       const sanityLoss = dreadCount * sanityLossImpact
       state.sp -= sanityLoss
-      logDebug(DEBUG.WORDS, "Dread words detected - SP reduced", {count: dreadCount, sanityLoss: sanityLoss, sp: state.sp})
+      log("Detected " + dreadCount + " dread words. SP reduced by " + sanityLoss + ". Current SP: " + state.sp)
     }
 
     if (rationalityCount >= sanityGainThresh) {
       const sanityGain = rationalityCount * sanityGainImpact
       state.sp += sanityGain
-      logDebug(DEBUG.WORDS, "Rationality words detected - SP increased", {count: rationalityCount, sanityGain: sanityGain, sp: state.sp})
+      log("Detected " + rationalityCount + " rationality words. SP increased by " + sanityGain + ". Current SP: " + state.sp)
     }
 
     state.sp = Math.max(0, Math.min(state.sp, state.maximumSP))
@@ -1293,7 +865,7 @@ const modifier = (text) => {
   if (explosionRoll <= state.randomExplosionChance && !state.gracePeriodActive) {
     state.heat += state.randomExplosionHeatIncreaseValue
     state.storyTemperature += state.randomExplosionTemperatureIncreaseValue
-    logWarn(DEBUG.TEMP, "Random explosion occurred", {heatGain: state.randomExplosionHeatIncreaseValue, tempGain: state.randomExplosionTemperatureIncreaseValue})
+    log("!WARNING! Explosion occurred! (+" + state.randomExplosionHeatIncreaseValue + " heat) (+" + state.randomExplosionTemperatureIncreaseValue + " temperature)")
   }
 
   /* --- BONEPOKE EVENTS --- */
@@ -1306,12 +878,12 @@ const modifier = (text) => {
         state.heat += 8
         state.storyTemperature += 3
         if (state.enableSPSystem) state.sp -= 10
-        logWarn(DEBUG.TEMP, "Bonepoke event: Reality Fracture", {heat: state.heat, temp: state.storyTemperature, sp: state.sp})
+        log("!BONEPOKE EVENT! Reality Fracture Occurred!")
       } else if (bonepokeResult.includes("drop")) {
         state.heat += 5
         state.storyTemperature += 2
         if (state.enableSPSystem) state.sp -= 8
-        logWarn(DEBUG.TEMP, "Bonepoke event: Traumatic Flashback", {heat: state.heat, temp: state.storyTemperature, sp: state.sp})
+        log("!BONEPOKE EVENT! Traumatic Flashback Occurred!")
       }
     }
 
@@ -1324,7 +896,7 @@ const modifier = (text) => {
 
     if (bonepokeResult.includes("drop") && state.overheatMode) {
       state.overheatTurnsLeft++
-      logInfo(DEBUG.TEMP, "Bonepoke governor: Emotional climax extended", {overheatTurnsLeft: state.overheatTurnsLeft})
+      log("!BONEPOKE GOVERNOR! Emotional climax extended.")
     }
   }
 
@@ -1339,7 +911,7 @@ const modifier = (text) => {
       const maxAllowedTemp = state.gracePeriodActive ? state.gracePeriodMaxTemperature : state.trueMaximumTemperature
       if (state.storyTemperature < maxAllowedTemp) {
         state.storyTemperature += state.temperatureIncreaseValue
-        logInfo(DEBUG.TEMP, "Temperature increased", {temp: state.storyTemperature})
+        log("Temperature increased. Temperature is now " + state.storyTemperature)
       }
     }
   }
@@ -1348,21 +920,21 @@ const modifier = (text) => {
   if (state.storyTemperature >= state.maximumTemperature && !state.cooldownMode && !state.overheatMode) {
     state.overheatMode = true
     state.overheatTurnsLeft = state.overheatTimer
-    logInfo(DEBUG.TEMP, "Overheat mode activated", {turnsLeft: state.overheatTurnsLeft})
+    log("Overheat Mode Activated")
   }
 
   if (state.cooldownMode) {
     state.cooldownTurnsLeft--
     state.storyTemperature -= state.cooldownRate
-    logDebug(DEBUG.TEMP, "Cooldown active", {turnsLeft: state.cooldownTurnsLeft, temp: state.storyTemperature})
+    log("Cooldown Timer: " + state.cooldownTurnsLeft)
 
     if (state.cooldownTurnsLeft <= 0) {
       state.cooldownMode = false
-      logInfo(DEBUG.TEMP, "Cooldown mode disabled")
+      log("Cooldown Mode Disabled")
     }
   } else if (state.overheatMode) {
     state.overheatTurnsLeft--
-    logDebug(DEBUG.TEMP, "Overheat active", {turnsLeft: state.overheatTurnsLeft})
+    log("Overheat Timer: " + state.overheatTurnsLeft)
 
     if (state.overheatTurnsLeft <= 0) {
       state.storyTemperature -= state.overheatReductionForTemperature
@@ -1370,7 +942,7 @@ const modifier = (text) => {
       state.overheatMode = false
       state.cooldownMode = true
       state.cooldownTurnsLeft = state.cooldownTimer
-      logInfo(DEBUG.TEMP, "Cooldown mode activated", {turnsLeft: state.cooldownTurnsLeft})
+      log("Cooldown Mode Activated")
     }
   }
 
@@ -1381,7 +953,6 @@ const modifier = (text) => {
   )
 
   /* --- GENRE/THEME/STYLE DETECTION --- */
-  const perfGenre = perfStart('genre_detection')
   let genre = "None"
   let theme = "None"
   let style = "None"
@@ -1417,7 +988,6 @@ const modifier = (text) => {
       }
     }
   }
-  perfEnd(perfGenre)
 
   /* --- CONTEXT INJECTION --- */
   let context = "No-Data"
@@ -1573,7 +1143,6 @@ const modifier = (text) => {
   }
 
   /* --- ASSEMBLE FINAL AUTHORS NOTE --- */
-  const perfAuthorsNote = perfStart('authors_note_assembly')
   // Read player's custom content from story card
   const playerAuthorsNote = getStoryCardEntry('PlayersAuthorsNote')
   const userNoteSection = playerAuthorsNote ? " --- " + playerAuthorsNote : ""
@@ -1594,19 +1163,14 @@ const modifier = (text) => {
     state.lockedAuthorsNote = finalNote + userNoteSection
     state.authorsNoteLockCounter = state.authorsNoteLockDuration
   }
-  perfEnd(perfAuthorsNote)
 
   /* --- LOGGING --- */
-  logInfo(DEBUG.TEMP, "Turn complete", {
-    turn: state.turnCount,
-    heat: state.heat,
-    temp: state.storyTemperature,
-    hp: state.enableHPSystem ? state.hp : null,
-    sp: state.enableSPSystem ? state.sp : null,
-    grace: state.gracePeriodActive ? state.gracePeriodTurnsLeft : null
-  })
+  let statusLog = "Turn:" + state.turnCount + " | Heat:" + state.heat + " | Temp:" + state.storyTemperature
+  if (state.enableHPSystem) statusLog += " | HP:" + state.hp
+  if (state.enableSPSystem) statusLog += " | SP:" + state.sp
+  if (state.gracePeriodActive) statusLog += " | Grace:" + state.gracePeriodTurnsLeft
+  log(statusLog)
 
-  perfEnd(perfTotal)
   return { text: text }
 }
 
